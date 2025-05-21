@@ -20,6 +20,8 @@ email_generation_collection = db["generated_emails"]
 
 product_collection = db["products"]
 
+user_collection = db["user_data"]
+chat_collection = db["chats"]
 
 
 # Helpers
@@ -77,4 +79,18 @@ def product_helper(product) -> dict:
         "published": product["published"],
         "variations": product.get("variations", []),
         "brand": product.get("brand")  # Brand name added
+    }
+
+def user_helper(user) -> dict:
+    return {
+        "id": str(user.get("_id", "")),
+        "email": user.get("email", ""),
+        "question": user.get("question", ""),
+        "answer": user.get("answer", ""),
+        "date": user.get("date", ""),
+        "time": user.get("time", ""),
+        "chat_id": user.get("chat_id", ""),
+        "feedback": user.get("feedback", []),
+        "prompt":user.get("prompt", []),
+        "is_delete": False,
     }

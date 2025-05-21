@@ -1,18 +1,37 @@
+import uuid 
 import strawberry
 from typing import List, Optional
 from datetime import datetime
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import bcrypt
-from database.db import product_helper,product_collection, store_collection, store_helper, image_generation_collection, image_helper,cluster_results_collection,email_generation_collection,email_helper
+from database.db import user_collection, user_helper, chat_collection, product_helper,product_collection, store_collection, store_helper, image_generation_collection, image_helper,cluster_results_collection,email_generation_collection,email_helper
 from models.generatedImage import generate_image
 from gemini import get_trending_products_from_gemini
 from mail import generate_email_content, send_email
 import random
 import string
 from models.po import add_name_only
-from models.GPT import ask_gemini
+from models.GPT import ask_gemini, genrate_chat_topic
 
+
+@strawberry.type
+class QuestionResponse:
+    id: str
+    email: str
+    question: str
+    answer: str
+    date: str   
+    time: str
+    chat_id: str  
+    is_delete:bool
+    prompt: str  
+
+@strawberry.type
+class Chat:
+    chat_id: str
+    email: str
+    topic: str
 
 @strawberry.input
 class ProductInput:
@@ -323,15 +342,42 @@ class Mutation:
         return ProductType(**product_helper(product))
     
     @strawberry.mutation
-    async def ask_gemini(self, question: str) -> str:
+    async def ask_gemini(self, email: str, question: str) -> QuestionResponse:
+        now = datetime.now()
+        answer = ""
+        if chat_id == "new":
+            chat_id = f"{str(uuid.uuid4())}"
+            topic = await genrate_chat_topic(question)
+            await chat_collection.insert_one({
+                "email": email, 
+                "chat_id": chat_id,
+                "createdAt": now,
+                "is_delete":False,
+                "topic": topic  # ✅ Default topic
+            })
+        message_count = await user_collection.find({"chat_id": chat_id}).to_list()
+        if len(message_count) >= 100:
+            return QuestionResponse(id="", email=email, question=question, answer="⚠️ Chat limit reached. Start a new chat.", date="", time="", chat_id=chat_id)
+        
         # Gemini se response lein
         answer = await ask_gemini(question)
 
         # Check if the answer is a dictionary and extract the result
         if isinstance(answer, dict) and 'result' in answer:
-            return answer['result']  # Return only the 'result' field
+            answer = answer['result']  # Return only the 'result' field
 
-        return str(answer) 
+        new_entry = await user_collection.insert_one({
+            "email": email,
+            "question": question,
+            "answer": answer,
+            "createdAt": now,
+            "chat_id": chat_id,
+            "prompt": "",
+            "feedback": [],
+            "is_delete": False,
+        })
+        created_question = await user_collection.find_one({"_id": new_entry.inserted_id})
+        return QuestionResponse(**user_helper(created_question)) 
 
 
 
@@ -340,6 +386,23 @@ class Mutation:
 # Query class to fetch stores by email
 @strawberry.type
 class Query:
+
+    @strawberry.field
+    async def get_questions(self, email: str, chat_id: str) -> List[QuestionResponse]:
+        """Retrieve all questions for a specific user in a specific chat."""
+        questions = []
+        async for user in user_collection.find({"email": email, "chat_id": chat_id}):  # 🆕 Chat ID filter
+            questions.append(QuestionResponse(**user_helper(user)))
+        return questions
+
+    @strawberry.field
+    async def get_chats(self, email: str) -> List[Chat]:
+        """Retrieve all chats for a user."""
+        chats = []
+        async for chat in chat_collection.find({"email": email,"is_delete":False}).sort({"createdAt":-1}):
+            chats.append(Chat(chat_id=chat["chat_id"], email=chat["email"], topic=chat.get("topic", "Untitled Chat")))
+        return chats
+
     @strawberry.field
     async def get_store_by_email(self, email: str) -> Optional[StoreType]:
         store = await store_collection.find_one({"email": email})
