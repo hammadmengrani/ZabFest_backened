@@ -1,0 +1,36 @@
+# Core
+strawberry-graphql
+motor
+pymongo
+bcrypt
+python-dotenv
+
+# Google Gemini
+google-generativeai
+
+# LangChain and Embeddings
+langchain
+langchain-community
+openai
+langchain-openai
+# Embeddings and Vector Stores
+sentence-transformers
+faiss-cpu  # or faiss-gpu if you're using GPU
+torch
+
+# PDF Generation and Manipulation
+PyPDF2
+reportlab
+
+# For image generation or manipulation (if used elsewhere)
+Pillow
+
+# Utility
+aiofiles
+uvicorn
+fastapi  # assuming FastAPI is used for serving
+httpx
+typing-extensions
+
+# Optional: if using asyncio features
+asyncio

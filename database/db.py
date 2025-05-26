@@ -90,7 +90,6 @@ def user_helper(user) -> dict:
         "date": user.get("date", ""),
         "time": user.get("time", ""),
         "chat_id": user.get("chat_id", ""),
-        "feedback": user.get("feedback", []),
         "prompt":user.get("prompt", []),
         "is_delete": False,
     }

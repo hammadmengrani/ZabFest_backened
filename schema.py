@@ -342,7 +342,7 @@ class Mutation:
         return ProductType(**product_helper(product))
     
     @strawberry.mutation
-    async def ask_gemini(self, email: str, question: str) -> QuestionResponse:
+    async def ask_gemini(self, email: str, question: str, chat_id: str) -> QuestionResponse:
         now = datetime.now()
         answer = ""
         if chat_id == "new":
@@ -373,7 +373,6 @@ class Mutation:
             "createdAt": now,
             "chat_id": chat_id,
             "prompt": "",
-            "feedback": [],
             "is_delete": False,
         })
         created_question = await user_collection.find_one({"_id": new_entry.inserted_id})
